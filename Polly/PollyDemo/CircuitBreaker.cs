@@ -4,6 +4,7 @@ using Moq;
 using Polly;
 using Polly.CircuitBreaker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PollyDemo
 {
@@ -31,29 +32,34 @@ namespace PollyDemo
                 .CircuitBreaker(2, TimeSpan.FromSeconds(3));
 
             // Circuit closed
+            Assert.Equal(CircuitState.Closed, policy.CircuitState);
             Assert.True(policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.True(policy.Execute(() => _mockJob.Object.DoWork()));
+
             Assert.Throws<DoWorkException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.Throws<DoWorkException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
 
-            // Circuit open
+            Assert.Equal(CircuitState.Open, policy.CircuitState);
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
 
             Thread.Sleep(TimeSpan.FromSeconds(3));
 
-            // Circuit closed
+            Assert.Equal(CircuitState.HalfOpen, policy.CircuitState);
             Assert.Throws<DoWorkException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
 
-            // Circuit open
+            Assert.Equal(CircuitState.Open, policy.CircuitState);
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
             Assert.Throws<BrokenCircuitException>(() => policy.Execute(() => _mockJob.Object.DoWork()));
 
             Thread.Sleep(TimeSpan.FromSeconds(3));
 
+            Assert.Equal(CircuitState.HalfOpen, policy.CircuitState);
             Assert.True(policy.Execute(() => _mockJob.Object.DoWork()));
+
+            Assert.Equal(CircuitState.Closed, policy.CircuitState);
             _mockJob.Verify(v => v.DoWork(), Times.Exactly(6));
         }
     }
